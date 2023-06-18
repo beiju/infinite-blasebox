@@ -327,6 +327,13 @@ function tickInner(rng: Rng, state: GameState, players: Item<Player>[], homeTeam
                     } else {
                         // Everything beneath this in the decision tree gets the batter off the plate
                         state.phase = GamePhase.BatterUp
+                        state.balls = 0
+                        state.strikes = 0
+                        if (state.top) {
+                            state.awayBatterIndex += 1
+                        } else {
+                            state.homeBatterIndex += 1
+                        }
                         const caught = rng.next() < 0.6
                         if (caught) {
                             const fly = rng.next() < 0.1
