@@ -715,7 +715,7 @@ function pairwise<T>(array: T[]) {
     return outer
 }
 
-export default function Games({
+export default function Index({
                                   teams, players,
                               }: InferGetStaticPropsType<typeof getStaticProps>) {
     const rng = new Rng(1398547n, 382746019348n) // chosen by random keysmash
