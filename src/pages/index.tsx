@@ -93,7 +93,7 @@ async function chroniclerFetch<DataType>(type: string, at: string) {
 }
 
 export const getStaticProps: GetStaticProps<{
-    teams: Team[], players: Player
+    teams: Item<Team>[], players: Item<Player>[]
 }> = async () => {
     const teamsPromise = chroniclerFetch<Team>("team", "2020-09-07T16:09:04.026Z")
     const playersPromise = chroniclerFetch<Player>("player", "2020-09-07T16:09:04.026Z")
@@ -700,7 +700,7 @@ function shuffle<T>(array: T[], rng: Rng) {
     return array;
 }
 
-function pairwise<T>(array: T[]) {
+function pairwise<T>(array: T[]): [T, T][] {
     const outer = []
 
     for (let i = 0; i < array.length; i += 2) {
@@ -712,6 +712,7 @@ function pairwise<T>(array: T[]) {
         outer.push(inner)
     }
 
+    // @ts-ignore
     return outer
 }
 
