@@ -181,7 +181,7 @@ type GameState = {
     runners: Runner[],
 }
 
-const STANDARD_TICK = 5000 // Made shorter for testing
+const STANDARD_TICK = 5000
 const SCORE_TICK = STANDARD_TICK * 2
 
 // Makes a modulo function that behaves the way I want it to on negative numbers
@@ -426,6 +426,7 @@ function tickInner(rng: Rng, state: GameState, players: Item<Player>[], homeTeam
                 state.runners = [...state.runners, {name: batter.data.name, base: 1}]
                 pushRunners(state.runners)
                 state.lastUpdate = `${batter.data.name} draws a walk.`
+                state.phase = GamePhase.BatterUp
             }
 
             if (state.strikes >= 3) {
@@ -446,7 +447,7 @@ function tickInner(rng: Rng, state: GameState, players: Item<Player>[], homeTeam
 
 type TimeoutObject = { timeout: ReturnType<typeof setTimeout> | null };
 
-function tickOuter(rng: Rng, setGameState: Dispatch<SetStateAction<GameState>>, players: Item<Player>[], homeTeam: Team, awayTeam: Team, day: number, gameIndex: number, onGameEnd: (day: number, gameIndex: number) => void): TimeoutObject {
+function tickOuter(rng: Rng, setGameState: Dispatch<SetStateAction<GameState>>, players: Item<Player>[], homeTeam: Team, awayTeam: Team, day: number, gameIndex: number, onGameEnd: (day: number, gameIndex: number, winnerId: string, loserId: string) => void): TimeoutObject {
     const timeoutInfo: TimeoutObject = {timeout: null}
     setGameState((prevState) => {
         // Copy state object because the one that's passed in has to be immutable
@@ -456,7 +457,12 @@ function tickOuter(rng: Rng, setGameState: Dispatch<SetStateAction<GameState>>, 
         if (delay !== null) {
             timeoutInfo.timeout = setTimeout(() => tickOuter(rng, setGameState, players, homeTeam, awayTeam, day, gameIndex, onGameEnd), delay)
         } else {
-            onGameEnd(day, gameIndex)
+            // breath mints i do NOT want to hear it
+            if (state.homeScore > state.awayScore) {
+                onGameEnd(day, gameIndex, homeTeam.id, awayTeam.id)
+            } else {
+                onGameEnd(day, gameIndex, awayTeam.id, homeTeam.id)
+            }
         }
         console.log(`${awayTeam.nickname} @ ${homeTeam.nickname}: ${state.lastUpdate}`)
         return state
@@ -478,13 +484,14 @@ function baseToString(base: number) {
     return ""
 }
 
-function Game({teams, players, day, rng, gameIndex, onGameEnd}: {
+function Game({teams, players, day, rng, gameIndex, records, onGameEnd}: {
     teams: [Team, Team],
     players: Item<Player>[],
     day: number,
     rng: Rng,
     gameIndex: number,
-    onGameEnd: (day: number, gameIndex: number) => void
+    records: { [key: string]: { wins: number, losses: number}},
+    onGameEnd: (day: number, gameIndex: number, winnerId: string, loserId: string) => void
 }) {
     const [awayTeam, homeTeam] = teams
     const [gameState, setGameState] = useState<GameState>({
@@ -592,7 +599,7 @@ function Game({teams, players, day, rng, gameIndex, onGameEnd}: {
                                  style={{"color": awayTeam.mainColor}}>{awayTeam.nickname}
                             </div>
                             <div className="GameWidget-ScoreTeamInfo">
-                                <div className="GameWidget-ScoreRecord">0-0</div>
+                                <div className="GameWidget-ScoreRecord">{records[awayTeam.id].wins}-{records[awayTeam.id].losses}</div>
                                 <span className="GameWidget-AllBetInfo"><div
                                     className="GameWidget-WinChance"
                                     style={{"color": awayTeam.mainColor}}>??%</div></span></div>
@@ -608,7 +615,7 @@ function Game({teams, players, day, rng, gameIndex, onGameEnd}: {
                                  style={{"color": homeTeam.mainColor}}>{homeTeam.nickname}
                             </div>
                             <div className="GameWidget-ScoreTeamInfo">
-                                <div className="GameWidget-ScoreRecord">0-0</div>
+                                <div className="GameWidget-ScoreRecord">{records[homeTeam.id].wins}-{records[homeTeam.id].losses}</div>
                                 <span className="GameWidget-AllBetInfo"><div
                                     className="GameWidget-WinChance"
                                     style={{"color": homeTeam.mainColor}}>??%</div></span></div>
@@ -744,14 +751,22 @@ export default function Index({
     const [state, setState] = useState({
         day: 0,
         gameRunning: games.map(_ => true),
+        records: Object.fromEntries(teams.map(team => [team.entityId, {wins: 0, losses: 0}]))
     })
 
-    function onGameEnd(day: number, gameIndex: number) {
+    function onGameEnd(day: number, gameIndex: number, winnerId: string, loserId: string) {
         setState(prevState => {
             // Protect against callback order issues
             if (day !== prevState.day) return prevState
 
             const state = {...prevState}
+            // Protect against double-setting
+            if (state.gameRunning[gameIndex]) {
+                // tiresome object identity busters
+                state.records = {...state.records}
+                state.records[winnerId].wins += 1
+                state.records[loserId].losses += 1
+            }
             state.gameRunning[gameIndex] = false
             if (!state.gameRunning.some(v => v)) {
                 // This is what kicks off the next day of games
@@ -898,7 +913,7 @@ export default function Index({
                         <div>
                             <div className="DailySchedule-Countdown"></div>
                             {games.map((gameTeams, idx) => <Game teams={gameTeams} players={players} day={state.day}
-                                                                 rng={rng} gameIndex={idx}
+                                                                 rng={rng} gameIndex={idx} records={state.records}
                                                                  onGameEnd={onGameEnd}
                                                                  key={gameTeams.map(t => t.shorthand).join("-")}/>)}
                         </div>
