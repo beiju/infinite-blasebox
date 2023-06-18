@@ -228,6 +228,45 @@ function pushRunners(runners: Runner[]) {
     }
 }
 
+function processOutsAndScores(state: GameState) {
+    let numScores = 0
+    if (state.outs >= 3) {
+        state.outs = 0
+        state.balls = 0
+        state.strikes = 0
+        state.runners = []
+
+        // This is deceptively complicated and I'm not sure i got it right
+        const endEarly = state.inning >= 8 && state.homeScore > state.awayScore
+        const endNormal = state.inning >= 8 && !state.top && state.homeScore != state.awayScore
+        if (endEarly || endNormal) {
+            state.phase = GamePhase.GameOver
+        } else {
+            state.phase = GamePhase.StartHalfInning
+        }
+    } else {
+        // Can't score on 3 outs
+        state.runners = state.runners.filter(runner => {
+            if (runner.base >= 4) {
+                numScores += 1
+                return false
+            }
+            return true
+        })
+        if (state.top) {
+            state.awayScore += numScores
+        } else {
+            state.homeScore += numScores
+        }
+        if (numScores == 1) {
+            state.lastUpdate += " 1 scores."
+        } else if (numScores > 1) {
+            state.lastUpdate += ` ${numScores}s score.`
+        }
+    }
+    return numScores;
+}
+
 function tickInner(rng: Rng, state: GameState, players: Item<Player>[], homeTeam: Team, awayTeam: Team, day: number) {
     if (state.start) {
         state.phase = GamePhase.NotStarted
@@ -285,20 +324,32 @@ function tickInner(rng: Rng, state: GameState, players: Item<Player>[], homeTeam
             // TODO: ALL THE FORMULAS
             // for no particular reason i'm implementing the s6 sim, which only allows the leading batter to steal
             if (state.runners.length > 0) {
-                const steal = rng.next() < 0.02
+                const steal = rng.next() < 0.05
                 if (steal) {
-                    state.runners[0].base += 1
-                    if (state.runners[0].base >= 4) {
-                        if (state.top) {
-                            state.awayScore += 1
-                        } else {
-                            state.homeScore += 1
-                        }
+                    // This is for react's change detection
+                    state.runners = [...state.runners]
+                    const caught = rng.next() < 0.5
+                    if (caught) {
+                        state.lastUpdate = `${state.runners[0].name} gets caught stealing ${baseToString(state.runners[0].base + 1)} base.`
+                        state.outs += 1
                         state.runners.splice(0, 1)
-                        // This is for react's change detection
-                        state.runners = [...state.runners]
-                        // This is the only early return in this whole case (as of when I'm typing this)
-                        return SCORE_TICK
+                        processOutsAndScores(state)
+                        return STANDARD_TICK
+                    } else {
+                        state.runners[0].base += 1
+                        if (state.runners[0].base >= 4) {
+                            if (state.top) {
+                                state.awayScore += 1
+                            } else {
+                                state.homeScore += 1
+                            }
+                            state.lastUpdate = `${state.runners[0].name} steals home!`
+                            state.runners.splice(0, 1)
+                            return SCORE_TICK
+                        } else {
+                            state.lastUpdate = `${state.runners[0].name} steals ${baseToString(state.runners[0].base)} base!`
+                            return STANDARD_TICK
+                        }
                     }
                 }
             }
@@ -329,11 +380,6 @@ function tickInner(rng: Rng, state: GameState, players: Item<Player>[], homeTeam
                         state.phase = GamePhase.BatterUp
                         state.balls = 0
                         state.strikes = 0
-                        if (state.top) {
-                            state.awayBatterIndex += 1
-                        } else {
-                            state.homeBatterIndex += 1
-                        }
                         const caught = rng.next() < 0.6
                         if (caught) {
                             const fly = rng.next() < 0.1
@@ -387,42 +433,7 @@ function tickInner(rng: Rng, state: GameState, players: Item<Player>[], homeTeam
                 state.balls = 0
                 state.strikes = 0
             }
-
-            let numScores = 0
-            if (state.outs >= 3) {
-                state.outs = 0
-                state.balls = 0
-                state.strikes = 0
-                state.runners = []
-
-                // This is deceptively complicated and I'm not sure i got it right
-                const endEarly = state.inning >= 8 && state.homeScore > state.awayScore
-                const endNormal = state.inning >= 8 && !state.top && state.homeScore != state.awayScore
-                if (endEarly || endNormal) {
-                    state.phase = GamePhase.GameOver
-                } else {
-                    state.phase = GamePhase.StartHalfInning
-                }
-            } else {
-                // Can't score on 3 outs
-                state.runners = state.runners.filter(runner => {
-                    if (runner.base >= 4) {
-                        numScores += 1
-                        return false
-                    }
-                    return true
-                })
-                if (state.top) {
-                    state.awayScore += numScores
-                } else {
-                    state.homeScore += numScores
-                }
-                if (numScores == 1) {
-                    state.lastUpdate += " 1 scores."
-                } else if (numScores > 1) {
-                    state.lastUpdate += ` ${numScores}s score.`
-                }
-            }
+            let numScores = processOutsAndScores(state)
 
             return numScores > 0 ? SCORE_TICK : STANDARD_TICK
         case GamePhase.GameOver:
@@ -461,6 +472,8 @@ function baseToString(base: number) {
             return "second"
         case 3:
             return "third"
+        case 4:
+            return "fourth"
     }
     return ""
 }
