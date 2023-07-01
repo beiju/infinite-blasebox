@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react"
 import { chroniclerFetch, Item, Player, Team } from "@/chron"
 import { Sim } from "@/sim/sim"
 import { Game } from "@/components/Game"
+import Head from "next/head"
 
 export const getStaticProps: GetStaticProps<{
     teams: Item<Team>[], players: Item<Player>[]
@@ -33,6 +34,9 @@ export default function Index({
 
     return (
         <div id="root">
+            <Head>
+                <title>The Infinite Blasebox</title>
+            </Head>
             <div className="Main">
                 <header className="Header">
                     <div className="Header-Links">
