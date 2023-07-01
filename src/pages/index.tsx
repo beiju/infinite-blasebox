@@ -1,6 +1,6 @@
 import type { GetStaticProps, InferGetStaticPropsType } from 'next'
 import { useEffect, useMemo, useState } from "react"
-import { chroniclerFetch, Item, Player, Team } from "@/chron"
+import { chroniclerFetch, chroniclerFetchActiveTeams, Item, Player, Team } from "@/chron"
 import { Sim } from "@/sim/sim"
 import { Game } from "@/components/Game"
 import Head from "next/head"
@@ -8,8 +8,9 @@ import Head from "next/head"
 export const getStaticProps: GetStaticProps<{
     teams: Item<Team>[], players: Item<Player>[]
 }> = async () => {
-    const teamsPromise = chroniclerFetch<Team>("team", "2020-09-07T16:09:04.026Z")
-    const playersPromise = chroniclerFetch<Player>("player", "2020-09-07T16:09:04.026Z")
+    const at = "2021-03-08T16:09:04.026Z"
+    const playersPromise = chroniclerFetch<Player>("player", at)
+    const teamsPromise = chroniclerFetchActiveTeams(at)
     const [teams, players] = await Promise.all([teamsPromise, playersPromise])
     // I did not think about the cultural sensitivity fixes when I picked this season
     for (const team of teams) {
@@ -24,8 +25,6 @@ export default function Index({
                               }: InferGetStaticPropsType<typeof getStaticProps>) {
     const sim = useMemo(() => new Sim(1398547n, 382746019348n, players, teams), [players, teams])
     const [simState, setSimState] = useState(sim.state)
-    console.log(sim.state.games.length)
-    console.log(simState.games.length)
 
     useEffect(() => {
         sim.start(newState => setSimState(newState))

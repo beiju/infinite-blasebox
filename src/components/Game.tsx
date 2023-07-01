@@ -4,6 +4,15 @@ import { Player } from "@/chron"
 import { SimState } from "@/sim/sim"
 import { checkedGet } from "@/util"
 
+function formatEmoji(emoji: string) {
+  const int = parseInt(emoji)
+  if (isFinite(int)) {
+    return String.fromCodePoint(int)
+  } else {
+    return emoji
+  }
+}
+
 export function Game({ day, gameState, playerMap, records }: {
   day: number,
   gameState: GameState,
@@ -74,7 +83,7 @@ export function Game({ day, gameState, playerMap, records }: {
           <div className="GameWidget-ScoreBacking"><a className="GameWidget-ScoreLine"
                                                       href="#">
             <div className="GameWidget-ScoreTeamColorBar"
-                 style={{ "background": awayTeam.mainColor }}>{String.fromCodePoint(parseInt(awayTeam.emoji))}
+                 style={{ "background": awayTeam.mainColor }}>{formatEmoji(awayTeam.emoji)}
             </div>
             <div className="GameWidget-ScoreTeam">
               <div className="GameWidget-ScoreName"
@@ -90,7 +99,7 @@ export function Game({ day, gameState, playerMap, records }: {
           </a><a className="GameWidget-ScoreLine"
                  href="#">
             <div className="GameWidget-ScoreTeamColorBar"
-                 style={{ "background": homeTeam.mainColor }}>{String.fromCodePoint(parseInt(homeTeam.emoji))}
+                 style={{ "background": homeTeam.mainColor }}>{formatEmoji(homeTeam.emoji)}
             </div>
             <div className="GameWidget-ScoreTeam">
               <div className="GameWidget-ScoreName"
