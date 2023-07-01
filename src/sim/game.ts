@@ -1,5 +1,7 @@
 import { Rng } from "@/sim/rng"
-import { Item, Player, Team } from "@/chron"
+import { Player, Team } from "@/chron"
+import { checkedGet } from "@/util"
+import { TimeoutObject } from "@/sim/sim"
 
 export enum GamePhase {
   NotStarted,
@@ -10,17 +12,13 @@ export enum GamePhase {
   GameOver,
 }
 
-export function findPlayer(players: Item<Player>[], id: string) {
-  const player = players.find(player => player.entityId == id)
-  if (typeof player === "undefined") throw new Error("Unknown batter")
-  return player
-}
-
 type Runner = {
   name: string,
   base: number,
 }
 export type GameState = {
+  homeTeam: Team,
+  awayTeam: Team,
   // This exists for react-y reasons
   start: boolean,
   // This is actually mostly used like a "next phase"
@@ -37,6 +35,29 @@ export type GameState = {
   outs: number,
   runners: Runner[],
 }
+
+export function startingGameState(homeTeam: Team, awayTeam: Team): GameState {
+  return {
+    homeTeam,
+    awayTeam,
+    // this needs to be separate from the start phase because it needs to trigger an effect only when a game
+    // is starting, not whenever the phase changes
+    start: false,
+    phase: GamePhase.NotStarted,
+    inning: 0,
+    top: true,
+    homeScore: 0,
+    awayScore: 0,
+    homeBatterIndex: 0,
+    awayBatterIndex: 0,
+    lastUpdate: "",
+    balls: 0,
+    strikes: 0,
+    outs: 0,
+    runners: [],
+  }
+}
+
 const STANDARD_TICK = 5000
 const SCORE_TICK = STANDARD_TICK * 2
 
@@ -50,10 +71,10 @@ function describeHomeRun(numRunners: number) {
   return `${numRunners}-run`
 }
 
-function chooseFielder(rng: Rng, players: Item<Player>[], team: Team) {
+function chooseFielder(rng: Rng, players: Map<string, Player>, team: Team) {
   const index = Math.floor(rng.next() * team.lineup.length)
   const id = team.lineup[index]
-  return findPlayer(players, id)
+  return checkedGet(players, id)
 }
 
 function maybeAdvance(rng: Rng, runners: Runner[], threshold: number) {
@@ -67,11 +88,11 @@ function maybeAdvance(rng: Rng, runners: Runner[], threshold: number) {
   }
 }
 
-function hit(state: GameState, batter: Item<Player>, bases: number, hitType: string) {
+function hit(state: GameState, batter: Player, bases: number, hitType: string) {
   state.runners.forEach(runner => runner.base += bases)
-  state.lastUpdate = `${batter.data.name} hits a ${hitType}!`
+  state.lastUpdate = `${batter.name} hits a ${hitType}!`
   // This is like a push but it works with react's change detection
-  state.runners = [...state.runners, { name: batter.data.name, base: bases }]
+  state.runners = [...state.runners, { name: batter.name, base: bases }]
 }
 
 function pushRunners(runners: Runner[]) {
@@ -137,17 +158,18 @@ export function baseToString(base: number) {
   return ""
 }
 
-export function tickInner(rng: Rng, state: GameState, players: Item<Player>[], homeTeam: Team, awayTeam: Team, day: number) {
+export function tickInner(rng: Rng, state: GameState, players: Map<string, Player>) {
   if (state.start) {
     state.phase = GamePhase.NotStarted
     state.start = false
   }
 
-  // Duplicated logic from the render because I'm afraid of synchronization issues if I pass those in
-  const homePitcher = findPlayer(players, homeTeam.rotation[mod(day, homeTeam.rotation.length)])
-  const awayPitcher = findPlayer(players, awayTeam.rotation[mod(day, awayTeam.rotation.length)])
-  const homeBatter = findPlayer(players, homeTeam.lineup[mod(state.homeBatterIndex, homeTeam.lineup.length)])
-  const awayBatter = findPlayer(players, awayTeam.lineup[mod(state.awayBatterIndex, awayTeam.lineup.length)])
+  const { homeTeam, awayTeam } = state
+
+  // const homePitcher = checkedGet(players, homeTeam.rotation[mod(day, homeTeam.rotation.length)])
+  // const awayPitcher = checkedGet(players, awayTeam.rotation[mod(day, awayTeam.rotation.length)])
+  const homeBatter = checkedGet(players, homeTeam.lineup[mod(state.homeBatterIndex, homeTeam.lineup.length)])
+  const awayBatter = checkedGet(players, awayTeam.lineup[mod(state.awayBatterIndex, awayTeam.lineup.length)])
 
   switch (state.phase) {
     case GamePhase.NotStarted:
@@ -180,12 +202,12 @@ export function tickInner(rng: Rng, state: GameState, players: Item<Player>[], h
     case GamePhase.BatterUp:
       if (state.top) {
         state.awayBatterIndex += 1
-        const batter = findPlayer(players, awayTeam.lineup[mod(state.awayBatterIndex, awayTeam.lineup.length)])
-        state.lastUpdate = `${batter.data.name} batting for the ${awayTeam.nickname}.`
+        const batter = checkedGet(players, awayTeam.lineup[mod(state.awayBatterIndex, awayTeam.lineup.length)])
+        state.lastUpdate = `${batter.name} batting for the ${awayTeam.nickname}.`
       } else {
         state.homeBatterIndex += 1
-        const batter = findPlayer(players, homeTeam.lineup[mod(state.homeBatterIndex, homeTeam.lineup.length)])
-        state.lastUpdate = `${batter.data.name} batting for the ${homeTeam.nickname}.`
+        const batter = checkedGet(players, homeTeam.lineup[mod(state.homeBatterIndex, homeTeam.lineup.length)])
+        state.lastUpdate = `${batter.name} batting for the ${homeTeam.nickname}.`
       }
       state.phase = GamePhase.Pitch
       return STANDARD_TICK
@@ -196,7 +218,7 @@ export function tickInner(rng: Rng, state: GameState, players: Item<Player>[], h
       if (state.runners.length > 0) {
         const steal = rng.next() < 0.05
         if (steal) {
-          // This is for react's change detection
+          // This is for React's change detection
           state.runners = [...state.runners]
           const caught = rng.next() < 0.5
           if (caught) {
@@ -257,12 +279,12 @@ export function tickInner(rng: Rng, state: GameState, players: Item<Player>[], h
                 // TODO Scoring/advancement on flyouts
                 state.outs += 1
                 const fielder = chooseFielder(rng, players, state.top ? homeTeam : awayTeam)
-                state.lastUpdate = `${batter.data.name} hit a flyout to ${fielder.data.name}.`
+                state.lastUpdate = `${batter.name} hit a flyout to ${fielder.name}.`
               } else {
                 // TODO FC/DP
                 state.outs += 1
                 const fielder = chooseFielder(rng, players, state.top ? homeTeam : awayTeam)
-                state.lastUpdate = `${batter.data.name} hit a ground out to ${fielder.data.name}.`
+                state.lastUpdate = `${batter.name} hit a ground out to ${fielder.name}.`
                 maybeAdvance(rng, state.runners, 0.1)
               }
             } else {
@@ -274,7 +296,7 @@ export function tickInner(rng: Rng, state: GameState, players: Item<Player>[], h
                   state.homeScore += state.runners.length + 1
                 }
                 state.runners = []
-                state.lastUpdate = `${batter.data.name} hits a ${describeHomeRun(state.runners.length)} home run!`
+                state.lastUpdate = `${batter.name} hits a ${describeHomeRun(state.runners.length)} home run!`
               } else {
                 const triple = rng.next() < 0.15
                 const double = !triple && rng.next() < 0.4
@@ -293,9 +315,9 @@ export function tickInner(rng: Rng, state: GameState, players: Item<Player>[], h
       if (state.balls >= 4) {
         state.balls = 0
         state.strikes = 0
-        state.runners = [...state.runners, { name: batter.data.name, base: 1 }]
+        state.runners = [...state.runners, { name: batter.name, base: 1 }]
         pushRunners(state.runners)
-        state.lastUpdate = `${batter.data.name} draws a walk.`
+        state.lastUpdate = `${batter.name} draws a walk.`
         state.phase = GamePhase.BatterUp
       }
 
@@ -313,4 +335,23 @@ export function tickInner(rng: Rng, state: GameState, players: Item<Player>[], h
   }
 
   throw new Error(`Unhandled state phase ${state.phase}`)
+}
+
+export function tick(timeout: TimeoutObject, rng: Rng, players: Map<string, Player>, day: number, prevState: GameState, onStateUpdate: (newState: GameState) => void, onGameEnd: (winner: string, loser: string) => void) {
+  // Copy state object because the one that's passed in has to be immutable
+  const state: GameState = { ...prevState }
+
+  const delay = tickInner(rng, state, players)
+  console.log(`${state.awayTeam.nickname} @ ${state.homeTeam.nickname}: ${state.lastUpdate}`)
+  if (delay !== null) {
+    onStateUpdate(state)
+    timeout.timeout = setTimeout(() => tick(timeout, rng, players, day, state, onStateUpdate, onGameEnd), delay)
+  } else {
+    // breath mints i do NOT want to hear it
+    if (state.homeScore > state.awayScore) {
+      onGameEnd(state.homeTeam.id, state.awayTeam.id)
+    } else {
+      onGameEnd(state.awayTeam.id, state.homeTeam.id)
+    }
+  }
 }

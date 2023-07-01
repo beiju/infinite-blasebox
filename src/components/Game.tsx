@@ -1,95 +1,33 @@
-import { Rng } from "@/sim/rng"
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react"
-import { baseToString, findPlayer, GamePhase, GameState, mod, tickInner } from "@/sim/game"
-import { Item, Player, Team } from "@/chron"
+import { useMemo } from "react"
+import { baseToString, GameState, mod } from "@/sim/game"
+import { Player } from "@/chron"
+import { SimState } from "@/sim/sim"
+import { checkedGet } from "@/util"
 
-type TimeoutObject = { timeout: ReturnType<typeof setTimeout> | null };
-
-function tickOuter(rng: Rng, setGameState: Dispatch<SetStateAction<GameState>>, players: Item<Player>[], homeTeam: Team, awayTeam: Team, day: number, gameIndex: number, onGameEnd: (day: number, gameIndex: number, winnerId: string, loserId: string) => void): TimeoutObject {
-  const timeoutInfo: TimeoutObject = { timeout: null }
-  setGameState((prevState) => {
-    // Copy state object because the one that's passed in has to be immutable
-    const state: GameState = { ...prevState }
-
-    const delay = tickInner(rng, state, players, homeTeam, awayTeam, day)
-    if (delay !== null) {
-      timeoutInfo.timeout = setTimeout(() => tickOuter(rng, setGameState, players, homeTeam, awayTeam, day, gameIndex, onGameEnd), delay)
-    } else {
-      // breath mints i do NOT want to hear it
-      if (state.homeScore > state.awayScore) {
-        onGameEnd(day, gameIndex, homeTeam.id, awayTeam.id)
-      } else {
-        onGameEnd(day, gameIndex, awayTeam.id, homeTeam.id)
-      }
-    }
-    console.log(`${awayTeam.nickname} @ ${homeTeam.nickname}: ${state.lastUpdate}`)
-    return state
-  })
-  return timeoutInfo
-}
-
-export function Game({ teams, players, day, rng, gameIndex, records, onGameEnd }: {
-  teams: [Team, Team],
-  players: Item<Player>[],
+export function Game({ day, gameState, playerMap, records }: {
   day: number,
-  rng: Rng,
-  gameIndex: number,
-  records: { [key: string]: { wins: number, losses: number } },
-  onGameEnd: (day: number, gameIndex: number, winnerId: string, loserId: string) => void
+  gameState: GameState,
+  playerMap: Map<string, Player>,
+  records: SimState["records"]
 }) {
-  const [awayTeam, homeTeam] = teams
-  const [gameState, setGameState] = useState<GameState>({
-    // this needs to be separate from the start phase because it needs to trigger an effect only when a game
-    // is starting, not whenever the phase changes
-    start: false,
-    // Start as if a previous game just ended so the game start code can kick things off
-    phase: GamePhase.GameOver,
-    inning: 0,
-    top: true,
-    homeScore: 0,
-    awayScore: 0,
-    homeBatterIndex: 0,
-    awayBatterIndex: 0,
-    lastUpdate: "",
-    balls: 0,
-    strikes: 0,
-    outs: 0,
-    runners: [],
-  })
-
-  // uh oh i'm starting to feel like i'm lost in the sauce with effects. anyway this is how changing the passed-in day
-  // kicks the next round of games off
-  useEffect(() => {
-    if (day >= 0) {
-      // oh god it's getting worse
-      setGameState(state => ({ ...state, start: true, }))
-    }
-  }, [day])
-
-  useEffect(() => {
-    // Tick uses state, but it uses it through the functional form of the setter. Otherwise the dependencies
-    // would be all topsy-turvy
-    const timeoutObject = tickOuter(rng, setGameState, players, homeTeam, awayTeam, day, gameIndex, onGameEnd)
-    return () => {
-      if (timeoutObject.timeout !== null) clearTimeout(timeoutObject.timeout)
-    }
-  }, [rng, players, homeTeam, awayTeam, day, gameState.start])
+  const homeTeam = gameState.homeTeam
+  const awayTeam = gameState.awayTeam
 
   const homePitcher = useMemo(() => {
-    return findPlayer(players, homeTeam.rotation[mod(day, homeTeam.rotation.length)])
-  }, [homeTeam, players, day])
+    return checkedGet(playerMap, homeTeam.rotation[mod(day, homeTeam.rotation.length)])
+  }, [homeTeam, playerMap, day])
 
   const awayPitcher = useMemo(() => {
-    return findPlayer(players, awayTeam.rotation[mod(day, awayTeam.rotation.length)])
-  }, [awayTeam, players, day])
+    return checkedGet(playerMap, awayTeam.rotation[mod(day, awayTeam.rotation.length)])
+  }, [awayTeam, playerMap, day])
 
   const homeBatter = useMemo(() => {
-    return findPlayer(players, homeTeam.lineup[mod(gameState.homeBatterIndex, homeTeam.lineup.length)])
-  }, [homeTeam, players, gameState.homeBatterIndex])
+    return checkedGet(playerMap, homeTeam.lineup[mod(gameState.homeBatterIndex, homeTeam.lineup.length)])
+  }, [homeTeam, playerMap, gameState.homeBatterIndex])
 
   const awayBatter = useMemo(() => {
-    return findPlayer(players, awayTeam.lineup[mod(gameState.awayBatterIndex, awayTeam.lineup.length)])
-  }, [awayTeam, players, gameState.awayBatterIndex])
+    return checkedGet(playerMap, awayTeam.lineup[mod(gameState.awayBatterIndex, awayTeam.lineup.length)])
+  }, [awayTeam, playerMap, gameState.awayBatterIndex])
 
   return (
     <div className="GameWidget">
@@ -143,7 +81,7 @@ export function Game({ teams, players, day, rng, gameIndex, records, onGameEnd }
                    style={{ "color": awayTeam.mainColor }}>{awayTeam.nickname}
               </div>
               <div className="GameWidget-ScoreTeamInfo">
-                <div className="GameWidget-ScoreRecord">{records[awayTeam.id].wins}-{records[awayTeam.id].losses}</div>
+                <div className="GameWidget-ScoreRecord">{checkedGet(records, awayTeam.id).wins}-{checkedGet(records, awayTeam.id).losses}</div>
                 <span className="GameWidget-AllBetInfo"><div
                   className="GameWidget-WinChance"
                   style={{ "color": awayTeam.mainColor }}>??%</div></span></div>
@@ -159,7 +97,7 @@ export function Game({ teams, players, day, rng, gameIndex, records, onGameEnd }
                    style={{ "color": homeTeam.mainColor }}>{homeTeam.nickname}
               </div>
               <div className="GameWidget-ScoreTeamInfo">
-                <div className="GameWidget-ScoreRecord">{records[homeTeam.id].wins}-{records[homeTeam.id].losses}</div>
+                <div className="GameWidget-ScoreRecord">{checkedGet(records, homeTeam.id).wins}-{checkedGet(records, homeTeam.id).losses}</div>
                 <span className="GameWidget-AllBetInfo"><div
                   className="GameWidget-WinChance"
                   style={{ "color": homeTeam.mainColor }}>??%</div></span></div>
@@ -223,7 +161,7 @@ export function Game({ teams, players, day, rng, gameIndex, records, onGameEnd }
                      style={{ "background": gameState.top ? homeTeam.mainColor : awayTeam.mainColor }}><a
                   className="GameWidget-PlayerLineName"
                   href="#">
-                  {gameState.top ? homePitcher.data.name : awayPitcher.data.name}
+                  {gameState.top ? homePitcher.name : awayPitcher.name}
                 </a></div>
               </div>
               <div className="GameWidget-PlayerLine">
@@ -234,7 +172,7 @@ export function Game({ teams, players, day, rng, gameIndex, records, onGameEnd }
                      style={{ "background": gameState.top ? awayTeam.mainColor : homeTeam.mainColor }}><a
                   className="GameWidget-PlayerLineName"
                   href="#">
-                  {gameState.top ? awayBatter.data.name : homeBatter.data.name}
+                  {gameState.top ? awayBatter.name : homeBatter.name}
                 </a></div>
               </div>
             </div>

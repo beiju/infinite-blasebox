@@ -1,7 +1,7 @@
 import type { GetStaticProps, InferGetStaticPropsType } from 'next'
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { chroniclerFetch, Item, Player, Team } from "@/chron"
-import { Rng } from "@/sim/rng"
+import { Sim } from "@/sim/sim"
 import { Game } from "@/components/Game"
 
 export const getStaticProps: GetStaticProps<{
@@ -18,75 +18,18 @@ export const getStaticProps: GetStaticProps<{
     return {props: {teams, players}}
 }
 
-// https://stackoverflow.com/a/2450976/522118
-function shuffle<T>(array: T[], rng: Rng) {
-    let currentIndex = array.length, randomIndex;
-
-    // While there remain elements to shuffle.
-    while (currentIndex != 0) {
-
-        // Pick a remaining element.
-        randomIndex = Math.floor(rng.next() * currentIndex);
-        currentIndex--;
-
-        // And swap it with the current element.
-        [array[currentIndex], array[randomIndex]] = [
-            array[randomIndex], array[currentIndex]];
-    }
-
-    return array;
-}
-
-function pairwise<T>(array: T[]): [T, T][] {
-    const outer = []
-
-    for (let i = 0; i < array.length; i += 2) {
-        const inner = []
-        for (let j = 0; j < 2; j += 1) {
-            // this will error if the array is of odd length
-            inner.push(array[i + j])
-        }
-        outer.push(inner)
-    }
-
-    // @ts-ignore
-    return outer
-}
-
 export default function Index({
                                   teams, players,
                               }: InferGetStaticPropsType<typeof getStaticProps>) {
-    const rng = new Rng(1398547n, 382746019348n) // chosen by random keysmash
-    const games = pairwise(shuffle(teams.map(t => t.data), rng))
-    const [state, setState] = useState({
-        day: 0,
-        gameRunning: games.map(_ => true),
-        records: Object.fromEntries(teams.map(team => [team.entityId, {wins: 0, losses: 0}]))
-    })
+    const sim = useMemo(() => new Sim(1398547n, 382746019348n, players, teams), [players, teams])
+    const [simState, setSimState] = useState(sim.state)
+    console.log(sim.state.games.length)
+    console.log(simState.games.length)
 
-    function onGameEnd(day: number, gameIndex: number, winnerId: string, loserId: string) {
-        setState(prevState => {
-            // Protect against callback order issues
-            if (day !== prevState.day) return prevState
-
-            const state = {...prevState}
-            // Protect against double-setting
-            if (state.gameRunning[gameIndex]) {
-                // tiresome object identity busters
-                state.records = {...state.records}
-                state.records[winnerId].wins += 1
-                state.records[loserId].losses += 1
-            }
-            state.gameRunning[gameIndex] = false
-            if (!state.gameRunning.some(v => v)) {
-                // This is what kicks off the next day of games
-                // There could be a timeout here, I haven't made up my mind yet
-                state.day += 1
-                state.gameRunning = state.gameRunning.map(_ => true)
-            }
-            return state
-        })
-    }
+    useEffect(() => {
+        sim.start(newState => setSimState(newState))
+        return () => sim.stop()
+    }, [sim]) // sim should never change! so this should only run once per mount
 
     return (
         <div id="root">
@@ -210,7 +153,7 @@ export default function Index({
                     <div>
                         <div className="DailySchedule-Header">Season<span
                             className="DailySchedule-Number">∞</span>Day<span
-                            className="DailySchedule-Number">{state.day + 1}</span>
+                            className="DailySchedule-Number">{simState.day + 1}</span>
                         </div>
                         <div className="Advertisement-SiteHeader">Not affiliated with the game band. This is a fan
                             tribute.
@@ -222,10 +165,13 @@ export default function Index({
                             className="Navigation-Button" href="#">Idols</a></div>
                         <div>
                             <div className="DailySchedule-Countdown"></div>
-                            {games.map((gameTeams, idx) => <Game teams={gameTeams} players={players} day={state.day}
-                                                                 rng={rng} gameIndex={idx} records={state.records}
-                                                                 onGameEnd={onGameEnd}
-                                                                 key={gameTeams.map(t => t.shorthand).join("-")}/>)}
+                            {simState.games.map(gameState => (
+                              <Game key={`${gameState.awayTeam.id}@${gameState.homeTeam.id}`}
+                                    day={simState.day}
+                                    gameState={gameState}
+                                    playerMap={sim.players}
+                                    records={simState.records} />
+                            ))}
                         </div>
                     </div>
                 </div>
