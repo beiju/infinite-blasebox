@@ -182,11 +182,6 @@ export default function Index({
                     <div className="Main-Footer-Links"><a className="Main-Footer-Link" href="#">Terms of
                         Service</a><a className="Main-Footer-Link" href="#">Privacy Policy</a><a
                         className="Main-Footer-Link" href="mailto:press@thegameband.com">Press</a></div>
-                    <div className="Main-Footer-Advertise">
-                        <div className="Main-Footer-Advertise-Inner"><a className="Main-Footer-Advertise-Icon"
-                                                                        href="mailto:sponsors@thegameband.com?subject=I%E2%80%99d%20like%20to%20sponsor%20a%20season%20of%20Blaseball">Sponsor
-                            a Season</a></div>
-                    </div>
                     <a href="https://twitter.com/thegameband" target="_blank" className="Main-Footer-Logo">
                         <svg width="959" height="1065" viewBox="0 0 959 1065">
                             <image id="Ball" x="87" y="75" width="784" height="911"
