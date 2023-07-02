@@ -196,7 +196,7 @@ export function BlaseballS13({ simState, playerMap }: { simState: SimState, play
       <header className="Header">
         <div className="Header-Links">
           <div className="Header-Logo"><h1 className="Header-Title"><Link href="/">Blaseball</Link></h1>
-            <div className="Header-Logo-Tag">GAMMA</div>
+            <div className="Header-Logo-Tag">OMEGA</div>
             <div className="Header-Logo-Era" style={{ "color": "rgb(61, 193, 138)" }}>TASTE THE INFINITE</div>
             <div className="Header-Logo-SubEra" style={{ "color": "rgb(96, 126, 130)" }}>RIV</div>
           </div>
