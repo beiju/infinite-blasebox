@@ -3,6 +3,8 @@ import { baseToString, GameState, mod } from "@/sim/game"
 import { Player } from "@/chron"
 import { SimState } from "@/sim/sim"
 import { checkedGet } from "@/util"
+import OverlayTrigger from 'react-bootstrap/OverlayTrigger'
+import Tooltip from 'react-bootstrap/Tooltip'
 
 function formatEmoji(emoji: string) {
   const int = parseInt(emoji)
@@ -316,36 +318,48 @@ export function GameS13({ day, gameState, playerMap, records }: {
                  aria-label={gameState.runners.length > 0 ? "Bases" : "No Runners on Base"}
                  viewBox="0 0 255 197"
                  version="1.1">
-              <g
-                aria-label={runnersOnFirst.length > 0 ? `First Base, ${runnersOnFirst.map(r => r.name).join(", ")} on` : ""}
-                role="text" id="base1" className="st0"
-                transform="matrix(0.7071,-0.7071,0.7071,0.7071,-40.4706,152.625)"
-                style={{
-                  "fill": runnersOnFirst.length > 0 ? "rgb(255, 255, 255)" : "none",
-                  "stroke": "rgb(255, 255, 255)"
-                }}>
-                <rect x="141.95" y="105.74" width="70.31" height="70.31"></rect>
-              </g>
-              <g
-                aria-label={runnersOnSecond.length > 0 ? `Second Base, ${runnersOnSecond.map(r => r.name).join(", ")} on` : ""}
-                role="text" id="base2" className="st0"
-                transform="matrix(0.7071,-0.7071,0.7071,0.7071,-16.7558,95.4764)"
-                style={{
-                  "fill": runnersOnSecond.length > 0 ? "rgb(255, 255, 255)" : "none",
-                  "stroke": "rgb(255, 255, 255)"
-                }}>
-                <rect x="84.83" y="48.54" width="70.31" height="70.31"></rect>
-              </g>
-              <g
-                aria-label={runnersOnThird.length > 0 ? `Third Base, ${runnersOnThird.map(r => r.name).join(", ")} on` : ""}
-                id="base3" className="st0"
-                transform="matrix(0.7071,-0.7071,0.7071,0.7071,-74.0296,71.6061)"
-                style={{
-                  "fill": runnersOnThird.length > 0 ? "rgb(255, 255, 255)" : "none",
-                  "stroke": "rgb(255, 255, 255)"
-                }}>
-                <rect x="27.38" y="105.74" width="70.31" height="70.31"></rect>
-              </g>
+              <OverlayTrigger
+                placement="bottom"
+                overlay={<Tooltip id={"base0tooltip"}><strong>{runnersOnFirst.map(r => r.name).join(", ")}</strong></Tooltip>}>
+                <g
+                  aria-label={runnersOnFirst.length > 0 ? `First Base, ${runnersOnFirst.map(r => r.name).join(", ")} on` : ""}
+                  role="text" id="base1" className="st0"
+                  transform="matrix(0.7071,-0.7071,0.7071,0.7071,-40.4706,152.625)"
+                  style={{
+                    "fill": runnersOnFirst.length > 0 ? "rgb(255, 255, 255)" : "none",
+                    "stroke": "rgb(255, 255, 255)"
+                  }}>
+                  <rect x="141.95" y="105.74" width="70.31" height="70.31"></rect>
+                </g>
+              </OverlayTrigger>
+              <OverlayTrigger
+                placement="top"
+                overlay={<Tooltip id={"base1tooltip"}><strong>{runnersOnSecond.map(r => r.name).join(", ")}</strong></Tooltip>}>
+                <g
+                  aria-label={runnersOnSecond.length > 0 ? `Second Base, ${runnersOnSecond.map(r => r.name).join(", ")} on` : ""}
+                  role="text" id="base2" className="st0"
+                  transform="matrix(0.7071,-0.7071,0.7071,0.7071,-16.7558,95.4764)"
+                  style={{
+                    "fill": runnersOnSecond.length > 0 ? "rgb(255, 255, 255)" : "none",
+                    "stroke": "rgb(255, 255, 255)"
+                  }}>
+                  <rect x="84.83" y="48.54" width="70.31" height="70.31"></rect>
+                </g>
+              </OverlayTrigger>
+              <OverlayTrigger
+                placement="bottom"
+                overlay={<Tooltip id={"base0tooltip"}><strong>{runnersOnThird.map(r => r.name).join(", ")}</strong></Tooltip>}>
+                <g
+                  aria-label={runnersOnThird.length > 0 ? `Third Base, ${runnersOnThird.map(r => r.name).join(", ")} on` : ""}
+                  id="base3" className="st0"
+                  transform="matrix(0.7071,-0.7071,0.7071,0.7071,-74.0296,71.6061)"
+                  style={{
+                    "fill": runnersOnThird.length > 0 ? "rgb(255, 255, 255)" : "none",
+                    "stroke": "rgb(255, 255, 255)"
+                  }}>
+                  <rect x="27.38" y="105.74" width="70.31" height="70.31"></rect>
+                </g>
+              </OverlayTrigger>
             </svg>
           </div>
           <ul className="Widget-Outs" aria-label="The Count">

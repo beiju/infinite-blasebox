@@ -182,7 +182,6 @@ export function BlaseballS6({ simState, playerMap }: { simState: SimState, playe
           </svg>
         </a></footer>
     </div>
-
   )
 }
 

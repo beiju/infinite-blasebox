@@ -55,9 +55,14 @@ export default function Index({
     setVersion(FrontendVersion[event.currentTarget.name as keyof typeof FrontendVersion])
   }
 
+  // I guess this is the way to add a class to the body
+  useEffect(() => {
+    document.body.classList.add("theme-dark")
+    return () => document.body.classList.remove("theme-dark")
+  }, [])
+
   return (
-    // theme-dark is for the season 13 UI
-    <div id="root" className="theme-dark">
+    <div id="root">
       <Head>
         <title>The Infinite Blasebox</title>
       </Head>
