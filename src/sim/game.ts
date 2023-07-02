@@ -251,7 +251,11 @@ export function tickInner(rng: Rng, state: GameState, players: Map<string, Playe
         if (inStrikeZone) {
           // Strike! Umps are perfect actually
           state.strikes += 1
-          state.lastUpdate = `Strike, looking. ${state.balls}-${state.strikes}`
+          if (state.strikes >= 3) {
+            state.lastUpdate = `${batter.name} strikes out looking.`
+          } else {
+            state.lastUpdate = `Strike, looking. ${state.balls}-${state.strikes}`
+          }
         } else {
           // Ball
           state.balls += 1
@@ -261,7 +265,11 @@ export function tickInner(rng: Rng, state: GameState, players: Map<string, Playe
         const contact = rng.next() < (inStrikeZone ? 0.5 : 0.2)
         if (!contact) {
           state.strikes += 1
-          state.lastUpdate = `Strike, swinging. ${state.balls}-${state.strikes}`
+          if (state.strikes >= 3) {
+            state.lastUpdate = `${batter.name} strikes out swinging.`
+          } else {
+            state.lastUpdate = `Strike, swinging. ${state.balls}-${state.strikes}`
+          }
         } else {
           const fair = rng.next() < 0.8
           if (!fair) {
@@ -325,6 +333,7 @@ export function tickInner(rng: Rng, state: GameState, players: Map<string, Playe
         state.outs += 1
         state.balls = 0
         state.strikes = 0
+        state.phase = GamePhase.BatterUp
       }
       let numScores = processOutsAndScores(state)
 
