@@ -343,8 +343,8 @@ export function tick(timeout: TimeoutObject, rng: Rng, players: Map<string, Play
 
   const delay = tickInner(rng, state, players)
   console.log(`${state.awayTeam.nickname} @ ${state.homeTeam.nickname}: ${state.lastUpdate}`)
+  onStateUpdate(state)
   if (delay !== null) {
-    onStateUpdate(state)
     timeout.timeout = setTimeout(() => tick(timeout, rng, players, day, state, onStateUpdate, onGameEnd), delay)
   } else {
     // breath mints i do NOT want to hear it
