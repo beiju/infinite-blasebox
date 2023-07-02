@@ -1,5 +1,5 @@
 import type { GetStaticProps, InferGetStaticPropsType } from 'next'
-import { ChangeEvent, useEffect, useMemo, useState } from "react"
+import { ChangeEvent, useEffect, useLayoutEffect, useMemo, useState } from "react"
 import { chroniclerFetch, chroniclerFetchActiveTeams, Item, Player, Team } from "@/chron"
 import { Sim } from "@/sim/sim"
 import Head from "next/head"
@@ -31,11 +31,30 @@ export default function Index({
     return () => sim.stop()
   }, [sim]) // sim should never change! so this should only run once per mount
 
-  const [version, setVersion] = useState(FrontendVersion.Season6)
+  const [version, setVersion] = useState<FrontendVersion | null>(null)
+
+  // dunno if this is the best way to do it
+  useEffect(() => {
+    if (version !== null) {
+      localStorage.setItem("blasebox-frontend-version", FrontendVersion[version])
+    }
+  }, [version])
+
+  useEffect(() => {
+    const storedVersion = localStorage.getItem("blasebox-frontend-version")
+    if (storedVersion === null) {
+      if (version !== null) {
+        localStorage.setItem("blasebox-frontend-version", FrontendVersion[version])
+      }
+    } else {
+      setVersion(FrontendVersion[storedVersion as keyof typeof FrontendVersion])
+    }
+  }, [])
 
   const onChangeVersion = (event: ChangeEvent<HTMLInputElement>) => {
     setVersion(FrontendVersion[event.currentTarget.name as keyof typeof FrontendVersion])
   }
+
   return (
     // theme-dark is for the season 13 UI
     <div id="root" className="theme-dark">
@@ -54,7 +73,7 @@ export default function Index({
                                                         onChange={onChangeVersion} /> Season 13</label></li>
       </nav>
 
-      <Blaseball simState={simState} playerMap={sim.players} version={version} />
+      {version !== null && <Blaseball simState={simState} playerMap={sim.players} version={version} />}
     </div>
   )
 }
