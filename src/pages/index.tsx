@@ -43,9 +43,7 @@ export default function Index({
   useEffect(() => {
     const storedVersion = localStorage.getItem("blasebox-frontend-version")
     if (storedVersion === null) {
-      if (version !== null) {
-        localStorage.setItem("blasebox-frontend-version", FrontendVersion[version])
-      }
+      setVersion(FrontendVersion.Season6)
     } else {
       setVersion(FrontendVersion[storedVersion as keyof typeof FrontendVersion])
     }
