@@ -12,11 +12,6 @@ export const getStaticProps: GetStaticProps<{
   const playersPromise = chroniclerFetch<Player>("player", at)
   const teamsPromise = chroniclerFetchActiveTeams(at)
   const [teams, players] = await Promise.all([teamsPromise, playersPromise])
-  // I did not think about the cultural sensitivity fixes when I picked this season
-  for (const team of teams) {
-    if (team.data.nickname === "Dalé") team.data.nickname = "Dale"
-    if (team.data.location === "Hawai'i") team.data.nickname = "Hawaii"
-  }
   return { props: { teams, players } }
 }
 
