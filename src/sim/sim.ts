@@ -1,12 +1,15 @@
 import { Rng } from "@/sim/rng"
 import { Item, Player, Team } from "@/chron"
 import { GamePhase, GameState, startingGameState, tick } from "@/sim/game"
-import { checkedGet } from "@/util"
+
+const TICK = 5 * 1000
 
 export type SimState = {
   day: number
   games: GameState[]
   records: Map<string, { wins: number, losses: number }>
+  tick: number,
+  time: Date,
 }
 
 export type TimeoutObject = { timeout: ReturnType<typeof setTimeout> | null }
@@ -35,60 +38,95 @@ export class Sim {
       day: 0,
       games: getNewMatchups(this.rng, [...this.teams.values()]),
       records: new Map(teams.map(team => [team.entityId, { wins: 0, losses: 0 }])),
+      tick: 0,
+      // Get the current time, floored to an even multiple of TICK
+      time: new Date(Math.floor(new Date().getTime() / TICK) * TICK),
     }
     this.activeTimeouts = []
   }
 
-  start(callback: (newState: SimState) => void) {
-    this.state.games.forEach((game, gameIdx) => {
-      const timeoutObject: TimeoutObject = { timeout: null }
+  /**
+   * Run the sim until the given goalTime. You probably want to pass in a time that's a multiple of TICK to get the most
+   * up-to-date value. The most common way to use this is to pass it the value returned by `nextTickTime()`
+   * @param goalTime
+   */
+  runToTime(goalTime: Date) {
+    while (this.state.time < goalTime) {
+      this._tick()
+      this.state.tick += 1
+      this.state.time = new Date(this.state.time.getTime() + TICK)
 
-      const onStateUpdate = (newState: GameState) => {
-        const newGames = [...this.state.games]
-        newGames[gameIdx] = newState
-
-        this.state = {
-          ...this.state,
-          games: newGames,
-        }
-        callback(this.state)
-      }
-
-      const onGameEnd = (winnerId: string, loserId: string) => {
-        checkedGet(this.state.records, winnerId).wins += 1
-        checkedGet(this.state.records, loserId).losses += 1
-
-        if (this.state.games.every(game => game.phase === GamePhase.GameOver)) {
-          console.log("All games stopped for today")
-          // reuse the timeout for one last delay
-          timeoutObject.timeout = setTimeout(() => {
-            // delete timeout because the next day gets a new one
-            this.activeTimeouts = this.activeTimeouts.filter(t => t !== timeoutObject)
-
-            this.state.day += 1
-            if (this.state.day % 3 === 0) {
-              this.state.games = getNewMatchups(this.rng, [...this.teams.values()])
-            } else {
-              this.state.games = this.state.games.map(game => startingGameState(game.homeTeam, game.awayTeam))
-            }
-            this.start(callback)
-          }, 10 * 1000)
-        } else {
-          // lazy way to delete this timeout
-          this.activeTimeouts = this.activeTimeouts.filter(t => t !== timeoutObject)
-        }
-      }
-
-      tick(timeoutObject, this.rng, this.players, this.state.day, game, onStateUpdate, onGameEnd)
-      this.activeTimeouts.push(timeoutObject)
-    })
+      // For the sake of react change detection
+      this.state = {...this.state}
+    }
   }
 
-  stop() {
-    for (const timeout of this.activeTimeouts) {
-      if (timeout.timeout !== null) {
-        clearTimeout(timeout.timeout)
+  nextTickTime() {
+    return new Date(this.state.time.getTime() + TICK)
+  }
+  // start(callback: (newState: SimState) => void) {
+  //   this.state.games.forEach((game, gameIdx) => {
+  //     const timeoutObject: TimeoutObject = { timeout: null }
+  //
+  //     const onStateUpdate = (newState: GameState) => {
+  //       const newGames = [...this.state.games]
+  //       newGames[gameIdx] = newState
+  //
+  //       this.state = {
+  //         ...this.state,
+  //         games: newGames,
+  //       }
+  //       callback(this.state)
+  //     }
+  //
+  //     const onGameEnd = (winnerId: string, loserId: string) => {
+  //       checkedGet(this.state.records, winnerId).wins += 1
+  //       checkedGet(this.state.records, loserId).losses += 1
+  //
+  //       if (this.state.games.every(game => game.phase === GamePhase.GameOver)) {
+  //         console.log("All games stopped for today")
+  //         // reuse the timeout for one last delay
+  //         timeoutObject.timeout = setTimeout(() => {
+  //           // delete timeout because the next day gets a new one
+  //           this.activeTimeouts = this.activeTimeouts.filter(t => t !== timeoutObject)
+  //
+  //           this.state.day += 1
+  //           if (this.state.day % 3 === 0) {
+  //             this.state.games = getNewMatchups(this.rng, [...this.teams.values()])
+  //           } else {
+  //             this.state.games = this.state.games.map(game => startingGameState(game.homeTeam, game.awayTeam))
+  //           }
+  //           this.start(callback)
+  //         }, 10 * 1000)
+  //       } else {
+  //         // lazy way to delete this timeout
+  //         this.activeTimeouts = this.activeTimeouts.filter(t => t !== timeoutObject)
+  //       }
+  //     }
+  //
+  //     tick(timeoutObject, this.rng, this.players, this.state.day, game, onStateUpdate, onGameEnd)
+  //     this.activeTimeouts.push(timeoutObject)
+  //   })
+  // }
+  //
+  // stop() {
+  //   for (const timeout of this.activeTimeouts) {
+  //     if (timeout.timeout !== null) {
+  //       clearTimeout(timeout.timeout)
+  //     }
+  //   }
+  // }
+  private _tick() {
+    let anyGameRunning = false
+    for (let i = 0; i < this.state.games.length; i++) {
+      this.state.games[i] = tick(this.rng, this.players, this.state.games[i])
+      if (this.state.games[i].phase != GamePhase.GameOver) {
+        anyGameRunning = true
       }
+    }
+
+    if (!anyGameRunning) {
+      debugger // TODO next games
     }
   }
 }

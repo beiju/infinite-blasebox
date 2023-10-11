@@ -1,9 +1,10 @@
 import type { GetStaticProps, InferGetStaticPropsType } from 'next'
-import { ChangeEvent, useEffect, useLayoutEffect, useMemo, useState } from "react"
+import { ChangeEvent, useEffect, useMemo, useState } from "react"
 import { chroniclerFetch, chroniclerFetchActiveTeams, Item, Player, Team } from "@/chron"
 import { Sim } from "@/sim/sim"
 import Head from "next/head"
 import { Blaseball, FrontendVersion } from "@/components/Blaseball"
+import assert from "assert"
 
 export const getStaticProps: GetStaticProps<{
   teams: Item<Team>[], players: Item<Player>[]
@@ -22,8 +23,19 @@ export default function Index({
   const [simState, setSimState] = useState(sim.state)
 
   useEffect(() => {
-    sim.start(newState => setSimState(newState))
-    return () => sim.stop()
+    let timeout: NodeJS.Timeout
+    let nextTime = new Date()
+    let ticker = () => {
+      console.log("Running tick for", nextTime.getTime(), "at", new Date().getTime())
+      sim.runToTime(nextTime)
+      setSimState(sim.state)
+      nextTime = sim.nextTickTime()
+      const dt = nextTime.getTime() - new Date().getTime()
+      assert(dt >= 0)
+      timeout = setTimeout(ticker, dt)
+    }
+    ticker()
+    return () => clearTimeout(timeout)
   }, [sim]) // sim should never change! so this should only run once per mount
 
   const [version, setVersion] = useState<FrontendVersion | null>(null)
@@ -38,7 +50,7 @@ export default function Index({
   useEffect(() => {
     const storedVersion = localStorage.getItem("blasebox-frontend-version")
     if (storedVersion === null) {
-      setVersion(FrontendVersion.Season6)
+      setVersion(FrontendVersion.Season13)
     } else {
       setVersion(FrontendVersion[storedVersion as keyof typeof FrontendVersion])
     }

@@ -151,7 +151,7 @@ export async function chroniclerFetch<DataType>(type: string, at: string, ids?: 
   return obj.items
 }
 
-export async function chroniclerFetchActiveTeams<DataType>(at: string): Promise<Item<Team>[]> {
+export async function chroniclerFetchActiveTeams(at: string): Promise<Item<Team>[]> {
   const sims = await chroniclerFetch<Sim>("sim", at)
   console.assert(sims.length === 1)
   const leagueId = sims[0].data.league

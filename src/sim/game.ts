@@ -346,21 +346,11 @@ export function tickInner(rng: Rng, state: GameState, players: Map<string, Playe
   throw new Error(`Unhandled state phase ${state.phase}`)
 }
 
-export function tick(timeout: TimeoutObject, rng: Rng, players: Map<string, Player>, day: number, prevState: GameState, onStateUpdate: (newState: GameState) => void, onGameEnd: (winner: string, loser: string) => void) {
+export function tick(rng: Rng, players: Map<string, Player>, prevState: GameState) {
   // Copy state object because the one that's passed in has to be immutable
   const state: GameState = { ...prevState }
 
-  const delay = tickInner(rng, state, players)
+  tickInner(rng, state, players)
   console.log(`${state.awayTeam.nickname} @ ${state.homeTeam.nickname}: ${state.lastUpdate}`)
-  onStateUpdate(state)
-  if (delay !== null) {
-    timeout.timeout = setTimeout(() => tick(timeout, rng, players, day, state, onStateUpdate, onGameEnd), delay)
-  } else {
-    // breath mints i do NOT want to hear it
-    if (state.homeScore > state.awayScore) {
-      onGameEnd(state.homeTeam.id, state.awayTeam.id)
-    } else {
-      onGameEnd(state.awayTeam.id, state.homeTeam.id)
-    }
-  }
+  return state
 }
