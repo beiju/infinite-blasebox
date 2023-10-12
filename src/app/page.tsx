@@ -30,8 +30,24 @@ export default function Index() {
     let cancelled = false
     const s0 = seedComponentFromQuery(query, "s0")
     const s1 = seedComponentFromQuery(query, "s1")
-    const gameday = schedule[Math.floor(schedule.length * Math.random())]
-    const offset = Math.random() * (gameday.end_time.getTime() - gameday.start_time.getTime())
+    let filtered_schedule = schedule
+    const querySeason = query.has("season") ? parseInt(query.get("season")!, 10) - 1 : NaN
+    if (isFinite(querySeason)) {
+      filtered_schedule = filtered_schedule.filter(item => item.season === querySeason)
+    }
+    const queryDay = query.has("day") ? parseInt(query.get("day")!, 10) - 1 : NaN
+    if (isFinite(queryDay)) {
+      filtered_schedule = filtered_schedule.filter(item => item.day === queryDay)
+    }
+    if (filtered_schedule.length === 0) {
+      console.warn("Couldn't get gameday for season", querySeason, "day", queryDay)
+      filtered_schedule = schedule
+    }
+    
+    const gameday = filtered_schedule[Math.floor(filtered_schedule.length * Math.random())]
+    const offset = query.has("offset") ?
+      parseInt(query.get("offset")!, 10) :
+      Math.random() * (gameday.end_time.getTime() - gameday.start_time.getTime())
     const time = new Date(gameday.start_time.getTime() + offset)
     const at = time.toISOString()
     const playersPromise = chroniclerFetch<Player>("player", at)
@@ -149,7 +165,7 @@ function Universe({ universe, version, onChangeVersion }: {
                                                         onChange={onChangeVersion} /> Season 13</label></li>
       </div>
       <div className="ib-location">
-        Current location: Ephemeral universe originating s{season < 0 ? "CC" : season + 1}d{day + 1}+{msToDisplayTime(offset)}
+        Current location: Ephemeral universe originating s{season < 0 ? "CC" : (season + 1)}d{day + 1}+{msToDisplayTime(offset)}
       </div>
       <div className="ib-universe-control">
         {/* Make a disabled link maybe? */}

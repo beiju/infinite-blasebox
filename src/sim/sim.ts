@@ -1,9 +1,9 @@
 import { Rng } from "@/sim/rng"
 import { Item, Player, Team } from "@/chron"
 import { GamePhase, GameState, startingGameState, tick } from "@/sim/game"
+import assert from "assert"
 
 const TICK = 5 * 1000
-
 
 export type Universe = {
   origin: {
@@ -44,6 +44,30 @@ export class Sim {
     this.rng = new Rng(seed1, seed2)
     this.players = new Map(players.map(player => [player.entityId, player.data]))
     this.teams = new Map(teams.map(team => [team.entityId, team.data]))
+
+    for (const team of this.teams.values()) {
+      if (team.bench) {
+        for (const id of team.bench) {
+          assert(this.players.has(id))
+        }
+      }
+      if (team.bullpen) {
+        for (const id of team.bullpen) {
+          assert(this.players.has(id))
+        }
+      }
+      if (team.shadows) {
+        for (const id of team.shadows) {
+          assert(this.players.has(id))
+        }
+      }
+      for (const id of team.lineup) {
+        assert(this.players.has(id))
+      }
+      for (const id of team.rotation) {
+        assert(this.players.has(id))
+      }
+    }
 
     this.state = {
       day: 0,

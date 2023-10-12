@@ -68,11 +68,12 @@ export type Division = {
 
 export type Team = {
   id: uuid,
-  bench: uuid[],
+  bench?: uuid[],
   emoji: string,
   lineup: uuid[],
   slogan: string,
-  bullpen: uuid[],
+  bullpen?: uuid[],
+  shadows?: uuid[],
   fullName: string,
   gameAttr: string[],
   location: string,
