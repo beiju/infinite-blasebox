@@ -167,7 +167,7 @@ export function BlaseballS13({ simState, playerMap }: { simState: SimState, play
       </nav>
       <div className="Main-Body"><h2 className="League-Header">Season<span
         className="League-Number">∞</span>Day<span
-        className="League-Number">1</span></h2>
+        className="League-Number">{simState.day + 1}</span></h2>
         <div className="Advertisement-SiteHeader">
           <div className="Advertisement-SiteHeader-Line">
             Not affiliated with the game band. This is a fan tribute.

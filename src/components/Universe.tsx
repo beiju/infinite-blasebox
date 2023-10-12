@@ -44,7 +44,7 @@ export function VersionSelect({ universe, universeId }: { universe: Universe | R
   }
 
   return (
-    version && <Universe universe={universe} universeId={universeId} version={version} onChangeVersion={onChangeVersion} />
+    version !== null && <Universe universe={universe} universeId={universeId} version={version} onChangeVersion={onChangeVersion} />
   )
 }
 
