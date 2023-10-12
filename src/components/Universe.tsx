@@ -5,6 +5,7 @@ import { ChangeEvent, MouseEvent, useEffect, useMemo, useState } from "react"
 import { Blaseball, FrontendVersion } from "@/components/Blaseball"
 import assert from "assert"
 import Link from "next/link"
+import { CHECKPOINT_INTERVAL } from "@/app/api/updateTimeCache"
 
 function msToDisplayTime(ms: number) {
   let sec = ms / 1000
@@ -64,6 +65,8 @@ function Universe({ universe: inUniverse, universeId, version, onChangeVersion }
     return u
   }, [inUniverse])
   const [renderState, setRenderState] = useState<SimState>(() => universe.sim.state)
+  const [nextCheckpointTime, setNextCheckpointTime] = useState(() =>
+    new Date(universe.sim.state.time.getTime() + CHECKPOINT_INTERVAL))
 
   useEffect(() => {
     if (!universe) return
@@ -81,6 +84,22 @@ function Universe({ universe: inUniverse, universeId, version, onChangeVersion }
     ticker()
     return () => clearTimeout(timeout)
   }, [universe]) // universe should never change! so this should only run once per mount
+
+  // it might be important for checkpoints to be after ticks? not sure
+  // i think (and hope) this will always snap to present, rather than marching there in intervals of CHECKPOINT_INTERVAL
+  useEffect(() => {
+    const delta = Math.max(0, nextCheckpointTime.getTime() - (new Date()).getTime())
+    const timeout = window.setTimeout(() => {
+      const data = JSON.stringify(universe)
+      fetch(`/api/universe/${universeId}`, {
+        method: "PUT",
+        body: data
+      })
+        .finally(() => setNextCheckpointTime(new Date(universe.sim.state.time.getTime() + CHECKPOINT_INTERVAL)))
+    }, delta)
+    return () => window.clearTimeout(timeout)
+    // universe doesn't change identity so this shouldn't re-run unnecessarily
+  }, [nextCheckpointTime, universe, universeId])
 
   const [isStabilizing, setIsStabilizing] = useState(false)
   const { season, day, offset } = universe.origin
