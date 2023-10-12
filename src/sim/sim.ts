@@ -1,4 +1,4 @@
-import { Rng } from "@/sim/rng"
+import { RawRng, Rng } from "@/sim/rng"
 import { Item, Player, Team } from "@/chron"
 import { GamePhase, GameState, startingGameState, tick } from "@/sim/game"
 import assert from "assert"
@@ -14,6 +14,21 @@ export type Universe = {
   sim: Sim,
 }
 
+export type RawUniverse = {
+  origin: {
+    season: number,
+    day: number,
+    offset: number,
+  },
+  sim: RawSim,
+}
+
+export type RawSim = {
+  rng: RawRng,
+  players: { [id: string]: Player },
+  teams: { [id: string]: Team },
+  state: RawSimState,
+}
 
 export type SimState = {
   day: number
@@ -23,7 +38,13 @@ export type SimState = {
   time: Date,
 }
 
-export type TimeoutObject = { timeout: ReturnType<typeof setTimeout> | null }
+export type RawSimState = {
+  day: number
+  games: GameState[]
+  records: { [key: string]: { wins: number, losses: number } }
+  tick: number,
+  time: number,
+}
 
 function getNewMatchups(rng: Rng, teams: Team[]): GameState[] {
   return pairwise(shuffle(teams, rng))
@@ -38,46 +59,68 @@ export class Sim {
   // Everything that React needs to respond to should be in here
   state: SimState
 
-  activeTimeouts: TimeoutObject[]
+  static fromChron(seed1: bigint, seed2: bigint, chronPlayers: Item<Player>[], chronTeams: Item<Team>[]) {
+    const rng = new Rng(seed1, seed2)
+    const players = new Map(chronPlayers.map(player => [player.entityId, player.data]))
+    const teams = new Map(chronTeams.map(team => [team.entityId, team.data]))
 
-  constructor(seed1: bigint, seed2: bigint, players: Item<Player>[], teams: Item<Team>[]) {
-    this.rng = new Rng(seed1, seed2)
-    this.players = new Map(players.map(player => [player.entityId, player.data]))
-    this.teams = new Map(teams.map(team => [team.entityId, team.data]))
-
-    for (const team of this.teams.values()) {
-      if (team.bench) {
-        for (const id of team.bench) {
-          assert(this.players.has(id))
-        }
-      }
-      if (team.bullpen) {
-        for (const id of team.bullpen) {
-          assert(this.players.has(id))
-        }
-      }
-      if (team.shadows) {
-        for (const id of team.shadows) {
-          assert(this.players.has(id))
-        }
-      }
+    for (const team of teams.values()) {
       for (const id of team.lineup) {
-        assert(this.players.has(id))
+        assert(players.has(id))
       }
       for (const id of team.rotation) {
-        assert(this.players.has(id))
+        assert(players.has(id))
       }
     }
 
-    this.state = {
+    const state = {
       day: 0,
-      games: getNewMatchups(this.rng, [...this.teams.values()]),
-      records: new Map(teams.map(team => [team.entityId, { wins: 0, losses: 0 }])),
+      games: getNewMatchups(rng, [...teams.values()]),
+      records: new Map(chronTeams.map(team => [team.entityId, { wins: 0, losses: 0 }])),
       tick: 0,
       // Get the current time, floored to an even multiple of TICK
       time: new Date(Math.floor(new Date().getTime() / TICK) * TICK),
     }
-    this.activeTimeouts = []
+
+    return new this(rng, players, teams, state)
+  }
+
+  static fromJSON(rawSim: RawSim) {
+    const rng = Rng.fromJSON(rawSim.rng)
+    const players = new Map(Object.entries(rawSim.players))
+    const teams = new Map(Object.entries(rawSim.teams))
+    const state: SimState = {
+      day: rawSim.state.day,
+      games: rawSim.state.games,
+      records: new Map(Object.entries(rawSim.state.records)),
+      tick: rawSim.state.tick,
+      time: new Date(rawSim.state.time),
+    }
+
+    return new this(rng, players, teams, state)
+  }
+
+
+  constructor(rng: Rng, players: Map<string, Player>, teams: Map<string, Team>, state: SimState) {
+    this.rng = rng
+    this.players = players
+    this.teams = teams
+    this.state = state
+  }
+
+  toJSON(key: string): RawSim {
+    return {
+      rng: this.rng.toJSON(),
+      players: Object.fromEntries(this.players.entries()),
+      teams: Object.fromEntries(this.teams.entries()),
+      state: {
+        day: this.state.day,
+        games: this.state.games,
+        records: Object.fromEntries(this.state.records.entries()),
+        tick: this.state.tick,
+        time: this.state.time.getTime(),
+      },
+    }
   }
 
   /**
@@ -86,16 +129,20 @@ export class Sim {
    * @param goalTime
    */
   runToTime(goalTime: Date) {
+    let ticks = 0
     while (this.state.time < goalTime) {
       this._tick()
       this.state.tick += 1
       this.state.time = new Date(this.state.time.getTime() + TICK)
+      ticks++
     }
+    console.log("Ran", ticks, "tick(s)")
   }
 
   nextTickTime() {
     return new Date(this.state.time.getTime() + TICK)
   }
+
   private _tick() {
     let anyGameRunning = false
     for (let i = 0; i < this.state.games.length; i++) {

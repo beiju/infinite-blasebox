@@ -350,6 +350,6 @@ export function tick(rng: Rng, players: Map<string, Player>, prevState: GameStat
   const state: GameState = { ...prevState }
 
   tickInner(rng, state, players)
-  console.log(`${state.awayTeam.nickname} @ ${state.homeTeam.nickname}: ${state.lastUpdate}`)
+  // console.log(`${state.awayTeam.nickname} @ ${state.homeTeam.nickname}: ${state.lastUpdate}`)
   return state
 }

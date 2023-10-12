@@ -1,4 +1,5 @@
-:root, #root {
+/* root is necessary for unstable universes, main is necessary for stable ones */
+:root, main {
   background-color: #2d0608;
   color: white;
 }
@@ -30,8 +31,8 @@
   text-align: right;
 }
 
-.ib-universe-control a {
-  opacity: 0.5; /* Temp styling to make this link "disabled" since it's not yet implemented */
+.ib-universe-control .stabilizing {
+  opacity: 0.5; /* styling to make this link look "disabled" when it can't be clicked */
 }
 
 .ib-loading {

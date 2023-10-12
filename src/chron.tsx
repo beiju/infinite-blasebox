@@ -152,16 +152,20 @@ export async function chroniclerFetch<DataType>(type: string, at: string, ids?: 
   return obj.items
 }
 
-export async function chroniclerFetchActiveTeams(at: string): Promise<Item<Team>[]> {
+export async function chroniclerFetchActiveTeams(at: string, reportProgress: (progress: number) => void): Promise<Item<Team>[]> {
   const sims = await chroniclerFetch<Sim>("sim", at)
+  reportProgress(1)
   console.assert(sims.length === 1)
   const leagueId = sims[0].data.league
   const leagues = await chroniclerFetch<League>("league", at, leagueId)
+  reportProgress(2)
   console.assert(leagues.length === 1)
   const subleagueIds = leagues[0].data.subleagues
   const subleagues = await chroniclerFetch<Subleague>("subleague", at, subleagueIds)
+  reportProgress(3)
   const divisionIds = subleagues.flatMap(subleague => subleague.data.divisions)
   const divisions = await chroniclerFetch<Division>("division", at, divisionIds)
+  reportProgress(4)
   const teamIds = divisions.flatMap(division => division.data.teams)
   return await chroniclerFetch<Team>("team", at, teamIds)
 }
@@ -203,14 +207,16 @@ export type PlayoffMatchup = {
   gamesPlayed: number,
 }
 
-export async function chroniclerFetchCoffeeCupTeams(at: string): Promise<Item<Team>[]> {
-  console.log("Fetching coffee cup teams")
+export async function chroniclerFetchCoffeeCupTeams(at: string, reportProgress: (progress: number) => void): Promise<Item<Team>[]> {
   const playoffs = await chroniclerFetch<Playoff>("playoffs", at, "7649f0da-100e-49b5-9110-91be3d786d4a")
+  reportProgress(2) // we skipped step 1
   console.assert(playoffs.length === 1)
   // Only need to grab the first round. Subsequent rounds are a subset of those teams.
   const rounds = await chroniclerFetch<PlayoffRound>("playoffround", at, playoffs[0].data.rounds[0])
+  reportProgress(3)
   console.assert(rounds.length === 1)
   const matchups = await chroniclerFetch<PlayoffMatchup>("playoffmatchup", at, rounds[0].data.matchups)
+  reportProgress(4)
   const teamIds = matchups.flatMap(matchup => [matchup.data.homeTeam, matchup.data.awayTeam])
   return await chroniclerFetch<Team>("team", at, teamIds)
 }

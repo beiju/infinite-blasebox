@@ -1,3 +1,5 @@
+export type RawRng = { s0: string, s1: string }
+
 export class Rng {
   state0: bigint
   state1: bigint
@@ -11,6 +13,17 @@ export class Rng {
   next() {
     [this.state0, this.state1] = xs128p(this.state0, this.state1)
     return state_to_double(this.state0)
+  }
+
+  toJSON() {
+    return { s0: this.state0.toString(10), s1: this.state1.toString(10) }
+  }
+
+  static fromJSON(rawRng: RawRng) {
+    const s0 = BigInt(rawRng.s0)
+    const s1 = BigInt(rawRng.s1)
+
+    return new this(s0, s1)
   }
 }
 
