@@ -152,7 +152,9 @@ function Universe({ universe, version, onChangeVersion }: {
         Current location: Ephemeral universe originating s{season < 0 ? "CC" : season + 1}d{day + 1}+{msToDisplayTime(offset)}
       </div>
       <div className="ib-universe-control">
-        <Link href={""}>Stabilize...</Link>
+        {/* Make a disabled link maybe? */}
+        {/* TODO Implement stabilization (saving universes) */}
+        <Link href={"/"} title="Coming soon!" onClick={e => e.preventDefault()}>Stabilize...</Link>
       </div>
     </nav>
 

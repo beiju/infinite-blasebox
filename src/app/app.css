@@ -30,6 +30,10 @@
   text-align: right;
 }
 
+.ib-universe-control a {
+  opacity: 0.5; /* Temp styling to make this link "disabled" since it's not yet implemented */
+}
+
 .ib-loading {
   text-align: center;
   margin: 3em auto 0;
