@@ -1,0 +1,7 @@
+- Compress universes before storing them in postgres
+- Apply team name color lightening/darkening that blaseball had
+- Don't attempt to catch up if the checkpoint is far enough behind (just skip time)
+    - How to re-sync clients if this happens?
+- Allow clicking on teams and players
+- Allow events to last multiple ticks
+- Formulae!
