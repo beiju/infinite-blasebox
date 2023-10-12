@@ -1,0 +1,63 @@
+:root, #root {
+  background-color: #2d0608;
+  color: white;
+}
+
+.ib-control {
+  background-image: linear-gradient(rgba(255, 255, 255, .05) 0%, rgba(255, 255, 255, 0) 100%);
+  box-shadow: inset rgba(255, 255, 255, .1) 0 1px 1px, rgba(0, 0, 0, .5) 0 1px 1px;
+  border-bottom: 1px solid black;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.ib-control > * {
+  padding-bottom: 2px;
+  margin: 0 6px;
+  flex: 1;
+}
+
+.ib-control label {
+  margin: 0;
+}
+
+.ib-location {
+  text-align: center;
+}
+
+.ib-universe-control {
+  text-align: right;
+}
+
+.ib-loading {
+  text-align: center;
+  margin: 3em auto 0;
+}
+
+.ib-loading-error {
+  text-align: center;
+  margin: 3em auto 0;
+  max-width: 800px;
+  background-image: linear-gradient(rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.05) 100%);
+  box-shadow: inset rgba(255, 255, 255, .1) 0 1px 1px, rgba(0, 0, 0, .9) 0 1px 10px;
+  border: 1px solid black;
+  border-radius: 1rem;
+  padding-bottom: 3rem;
+}
+
+.ib-loading-error h1 {
+  background-image: linear-gradient(rgba(0, 0, 0, .2) 0%, rgba(0, 0, 0, 0.5) 100%);
+  border-bottom: 1px solid black;
+  border-radius: 1rem 1rem 0 0;
+  margin-bottom: 3rem;
+  padding: .5rem;
+}
+
+.ib-loading-error p, .ib-loading-error p:hover {
+  margin: 0.5rem 0
+}
+
+.ib-main a {
+  text-decoration: underline;
+}

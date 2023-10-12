@@ -4,6 +4,17 @@ import { GamePhase, GameState, startingGameState, tick } from "@/sim/game"
 
 const TICK = 5 * 1000
 
+
+export type Universe = {
+  origin: {
+    season: number,
+    day: number,
+    offset: number,
+  },
+  sim: Sim,
+}
+
+
 export type SimState = {
   day: number
   games: GameState[]
@@ -55,71 +66,12 @@ export class Sim {
       this._tick()
       this.state.tick += 1
       this.state.time = new Date(this.state.time.getTime() + TICK)
-
-      // For the sake of react change detection
-      this.state = {...this.state}
-
-      // if (this.state.tick % 1000 == 0) {
-      //   console.log(this.state.tick / (Date.now() - startTime), "ticks/s")
-      // }
     }
   }
 
   nextTickTime() {
     return new Date(this.state.time.getTime() + TICK)
   }
-  // start(callback: (newState: SimState) => void) {
-  //   this.state.games.forEach((game, gameIdx) => {
-  //     const timeoutObject: TimeoutObject = { timeout: null }
-  //
-  //     const onStateUpdate = (newState: GameState) => {
-  //       const newGames = [...this.state.games]
-  //       newGames[gameIdx] = newState
-  //
-  //       this.state = {
-  //         ...this.state,
-  //         games: newGames,
-  //       }
-  //       callback(this.state)
-  //     }
-  //
-  //     const onGameEnd = (winnerId: string, loserId: string) => {
-  //       checkedGet(this.state.records, winnerId).wins += 1
-  //       checkedGet(this.state.records, loserId).losses += 1
-  //
-  //       if (this.state.games.every(game => game.phase === GamePhase.GameOver)) {
-  //         console.log("All games stopped for today")
-  //         // reuse the timeout for one last delay
-  //         timeoutObject.timeout = setTimeout(() => {
-  //           // delete timeout because the next day gets a new one
-  //           this.activeTimeouts = this.activeTimeouts.filter(t => t !== timeoutObject)
-  //
-  //           this.state.day += 1
-  //           if (this.state.day % 3 === 0) {
-  //             this.state.games = getNewMatchups(this.rng, [...this.teams.values()])
-  //           } else {
-  //             this.state.games = this.state.games.map(game => startingGameState(game.homeTeam, game.awayTeam))
-  //           }
-  //           this.start(callback)
-  //         }, 10 * 1000)
-  //       } else {
-  //         // lazy way to delete this timeout
-  //         this.activeTimeouts = this.activeTimeouts.filter(t => t !== timeoutObject)
-  //       }
-  //     }
-  //
-  //     tick(timeoutObject, this.rng, this.players, this.state.day, game, onStateUpdate, onGameEnd)
-  //     this.activeTimeouts.push(timeoutObject)
-  //   })
-  // }
-  //
-  // stop() {
-  //   for (const timeout of this.activeTimeouts) {
-  //     if (timeout.timeout !== null) {
-  //       clearTimeout(timeout.timeout)
-  //     }
-  //   }
-  // }
   private _tick() {
     let anyGameRunning = false
     for (let i = 0; i < this.state.games.length; i++) {

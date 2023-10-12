@@ -144,7 +144,7 @@ export async function chroniclerFetch<DataType>(type: string, at: string, ids?: 
     idString += `&id=${ids.join(",")}`
   }
   // Could do pagination in here... or just be lazy and use a huge count
-  const url = `https://api.sibr.dev/chronicler/v2/entities?type=${type}&at=${at}&count=1000${idString}`
+  const url = `https://api.sibr.dev/chronicler/v2/entities?type=${type}&at=${at}&count=2000${idString}`
   console.log("Fetching", url)
   const res = await fetch(url)
   const obj: Chron<Item<DataType>> = await res.json()

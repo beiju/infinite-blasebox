@@ -1,6 +1,8 @@
 import React from "react"
 import type { Metadata } from "next"
 
+import "@/app/app.css"
+
 export const metadata: Metadata = {
   title: 'The Infinite Blasebox',
 }
