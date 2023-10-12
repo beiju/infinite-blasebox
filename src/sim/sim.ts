@@ -58,6 +58,10 @@ export class Sim {
 
       // For the sake of react change detection
       this.state = {...this.state}
+
+      // if (this.state.tick % 1000 == 0) {
+      //   console.log(this.state.tick / (Date.now() - startTime), "ticks/s")
+      // }
     }
   }
 
@@ -126,7 +130,12 @@ export class Sim {
     }
 
     if (!anyGameRunning) {
-      debugger // TODO next games
+      this.state.day += 1
+      if (this.state.day % 3 === 0) {
+        this.state.games = getNewMatchups(this.rng, [...this.teams.values()])
+      } else {
+        this.state.games = this.state.games.map(game => startingGameState(game.homeTeam, game.awayTeam))
+      }
     }
   }
 }

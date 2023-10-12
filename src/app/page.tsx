@@ -1,28 +1,60 @@
-import type { GetStaticProps, InferGetStaticPropsType } from 'next'
+"use client"
+
+import type { GetStaticProps, InferGetStaticPropsType, Metadata } from 'next'
 import { ChangeEvent, useEffect, useMemo, useState } from "react"
 import { chroniclerFetch, chroniclerFetchActiveTeams, Item, Player, Team } from "@/chron"
-import { Sim } from "@/sim/sim"
+import { Sim, SimState } from "@/sim/sim"
 import Head from "next/head"
 import { Blaseball, FrontendVersion } from "@/components/Blaseball"
 import assert from "assert"
+import { ReadonlyURLSearchParams, useSearchParams } from "next/navigation"
+import randomBigint from 'crypto-random-bigint'
+import schedule from "@/app/schedule"
 
-export const getStaticProps: GetStaticProps<{
-  teams: Item<Team>[], players: Item<Player>[]
-}> = async () => {
-  const at = "2021-03-08T16:09:04.026Z"
-  const playersPromise = chroniclerFetch<Player>("player", at)
-  const teamsPromise = chroniclerFetchActiveTeams(at)
-  const [teams, players] = await Promise.all([teamsPromise, playersPromise])
-  return { props: { teams, players } }
+function randomSeedComponent() {
+  return randomBigint(128)
 }
 
-export default function Index({
-                                teams, players,
-                              }: InferGetStaticPropsType<typeof getStaticProps>) {
-  const sim = useMemo(() => new Sim(1398547n, 382746019348n, players, teams), [players, teams])
-  const [simState, setSimState] = useState(sim.state)
+function seedComponentFromQuery(query: ReadonlyURLSearchParams, name: string) {
+  if (!query.has(name)) {
+    return randomSeedComponent()
+  }
+  const mask = BigInt(2) ** BigInt(128) - BigInt(1)
+  return BigInt(query.get("s0")!) & mask
+}
+
+export default function Index() {
+  const query = useSearchParams()!
+  const [sim, setSim] = useState<Sim | null>(null)
+  const [simLoadError, setSimLoadError] = useState<Error | null>(null)
+  const [simState, setSimState] = useState<SimState | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    const s0 = seedComponentFromQuery(query, "s0")
+    const s1 = seedComponentFromQuery(query, "s1")
+    const gameday = schedule[Math.floor(schedule.length * Math.random())]
+    const time = new Date(gameday.start_time.getTime() + Math.random() * (gameday.end_time.getTime() - gameday.start_time.getTime()))
+    const at = time.toISOString()
+    const playersPromise = chroniclerFetch<Player>("player", at)
+    const teamsPromise = chroniclerFetchActiveTeams(at)
+    Promise.all([playersPromise, teamsPromise])
+      .then(([players, teams]) => {
+        if (cancelled) return
+        const sim = new Sim(s0, s1, players, teams)
+        setSim(sim)
+        setSimState(sim.state)
+      }, error => {
+        if (cancelled) return
+        setSimLoadError(error)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [query])
 
   useEffect(() => {
+    if (!sim) return
     let timeout: NodeJS.Timeout
     let nextTime = new Date()
     let ticker = () => {
@@ -60,18 +92,8 @@ export default function Index({
     setVersion(FrontendVersion[event.currentTarget.name as keyof typeof FrontendVersion])
   }
 
-  // I guess this is the way to add a class to the body
-  useEffect(() => {
-    document.body.classList.add("theme-dark")
-    return () => document.body.classList.remove("theme-dark")
-  }, [])
-
   return (
     <div id="root">
-      <Head>
-        <title>The Infinite Blasebox</title>
-      </Head>
-
       <nav>
         UI Style:{' '}
         <li style={{ display: "inline" }}><label><input type={"radio"} name="Season6"
@@ -83,7 +105,14 @@ export default function Index({
                                                         onChange={onChangeVersion} /> Season 13</label></li>
       </nav>
 
-      {version !== null && <Blaseball simState={simState} playerMap={sim.players} version={version} />}
+      {simLoadError && <main>
+        <h1>Error</h1>
+        <p>{simLoadError.toString()}</p>
+      </main>}
+      {!simLoadError && !simState && <main>
+        <h1>Loading...</h1>
+      </main>}
+      {sim && simState && version !== null && <Blaseball simState={simState} playerMap={sim.players} version={version} />}
     </div>
   )
 }

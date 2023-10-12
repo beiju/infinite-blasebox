@@ -1,7 +1,6 @@
 import { Rng } from "@/sim/rng"
 import { Player, Team } from "@/chron"
 import { checkedGet } from "@/util"
-import { TimeoutObject } from "@/sim/sim"
 
 export enum GamePhase {
   NotStarted,
