@@ -165,3 +165,52 @@ export async function chroniclerFetchActiveTeams(at: string): Promise<Item<Team>
   const teamIds = divisions.flatMap(division => division.data.teams)
   return await chroniclerFetch<Team>("team", at, teamIds)
 }
+
+export type Playoff = {
+  id: uuid,
+  name: string,
+  rounds: uuid[]
+  season: number,
+  winner: uuid | null,
+  playoffDay: number,
+  tournament: number,
+  tomorrowRound: number,
+  numberOfRounds: number,
+}
+
+export type PlayoffRound = {
+  id: uuid,
+  name: string,
+  games: (uuid | "none")[][],
+  special: boolean,
+  winners: uuid[],
+  matchups: uuid[],
+  gameIndex: number,
+  roundNumber: number,
+  winnerSeeds: number[],
+}
+
+export type PlayoffMatchup = {
+  id: uuid,
+  name:	null,
+  awaySeed:	number,
+  awayTeam: uuid,
+  awayWins: number,
+  homeSeed: number,
+  homeTeam: uuid,
+  homeWins: 3,
+  gamesNeeded: string,
+  gamesPlayed: number,
+}
+
+export async function chroniclerFetchCoffeeCupTeams(at: string): Promise<Item<Team>[]> {
+  console.log("Fetching coffee cup teams")
+  const playoffs = await chroniclerFetch<Playoff>("playoffs", at, "7649f0da-100e-49b5-9110-91be3d786d4a")
+  console.assert(playoffs.length === 1)
+  // Only need to grab the first round. Subsequent rounds are a subset of those teams.
+  const rounds = await chroniclerFetch<PlayoffRound>("playoffround", at, playoffs[0].data.rounds[0])
+  console.assert(rounds.length === 1)
+  const matchups = await chroniclerFetch<PlayoffMatchup>("playoffmatchup", at, rounds[0].data.matchups)
+  const teamIds = matchups.flatMap(matchup => [matchup.data.homeTeam, matchup.data.awayTeam])
+  return await chroniclerFetch<Team>("team", at, teamIds)
+}

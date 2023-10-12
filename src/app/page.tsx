@@ -1,7 +1,7 @@
 "use client"
 
 import { ChangeEvent, useEffect, useState } from "react"
-import { chroniclerFetch, chroniclerFetchActiveTeams, Player } from "@/chron"
+import { chroniclerFetch, chroniclerFetchActiveTeams, chroniclerFetchCoffeeCupTeams, Player } from "@/chron"
 import { Sim, SimState, Universe } from "@/sim/sim"
 import { Blaseball, FrontendVersion } from "@/components/Blaseball"
 import assert from "assert"
@@ -51,7 +51,8 @@ export default function Index() {
     const time = new Date(gameday.start_time.getTime() + offset)
     const at = time.toISOString()
     const playersPromise = chroniclerFetch<Player>("player", at)
-    const teamsPromise = chroniclerFetchActiveTeams(at)
+    const teamsPromise = gameday.season === -1 ?
+      chroniclerFetchCoffeeCupTeams(at) : chroniclerFetchActiveTeams(at)
     Promise.all([playersPromise, teamsPromise])
       .then(([players, teams]) => {
         if (cancelled) return
