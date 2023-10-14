@@ -14,7 +14,7 @@ export async function PUT(req: Request, { params }: { params: { universeId: stri
       status: "skipped",
     })
   }
-  await sql`UPDATE universes SET (data) = (${data}) WHERE id = ${universeId};`
+  await sql`UPDATE universes SET data = ${data} WHERE id = ${universeId};`
   CHECKPOINT_TIME_CACHE[universeId] = now
   return NextResponse.json({
     status: "success",

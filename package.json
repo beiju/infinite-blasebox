@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@simbathesailor/use-what-changed": "^2.0.0",
     "@types/node": "^20.8.4",
     "@types/react": "^18.2.28",
     "@types/react-dom": "^18.2.13",

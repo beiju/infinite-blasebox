@@ -51,6 +51,14 @@ function getNewMatchups(rng: Rng, teams: Team[]): GameState[] {
     .map(([homeTeam, awayTeam]) => startingGameState(homeTeam, awayTeam))
 }
 
+function incrementRecord(records: Map<string, { "wins": number, "losses": number }>, teamId: string, key: "wins" | "losses") {
+  if (!records.has(teamId)) {
+    records.set(teamId, { wins: 0, losses: 0 })
+  }
+
+  records.get(teamId)![key] += 1
+}
+
 export class Sim {
   rng: Rng
   players: Map<string, Player>
@@ -154,6 +162,18 @@ export class Sim {
 
     if (!anyGameRunning) {
       this.state.day += 1
+      for (const game of this.state.games) {
+        // breath mints i do NOT want to hear it
+        if (game.homeScore > game.awayScore) {
+          incrementRecord(this.state.records, game.homeTeam.id, "wins")
+          incrementRecord(this.state.records, game.awayTeam.id, "losses")
+        } else {
+          incrementRecord(this.state.records, game.homeTeam.id, "losses")
+          incrementRecord(this.state.records, game.awayTeam.id, "wins")
+
+        }
+      }
+
       if (this.state.day % 3 === 0) {
         this.state.games = getNewMatchups(this.rng, [...this.teams.values()])
       } else {

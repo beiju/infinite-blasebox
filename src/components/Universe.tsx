@@ -20,7 +20,6 @@ function msToDisplayTime(ms: number) {
 }
 
 export function VersionSelect({ universe, universeId }: { universe: Universe | RawUniverse, universeId?: string }) {
-
   const [version, setVersion] = useState<FrontendVersion | null>(null)
 
   // dunno if this is the best way to do it
@@ -54,6 +53,7 @@ function Universe({ universe: inUniverse, universeId, version, onChangeVersion }
   version: FrontendVersion,
   onChangeVersion: (event: ChangeEvent<HTMLInputElement>) => void,
 }) {
+
   const universe = useMemo(() => {
     if (inUniverse.sim instanceof Sim) {
       return inUniverse as Universe
@@ -88,14 +88,22 @@ function Universe({ universe: inUniverse, universeId, version, onChangeVersion }
   // it might be important for checkpoints to be after ticks? not sure
   // i think (and hope) this will always snap to present, rather than marching there in intervals of CHECKPOINT_INTERVAL
   useEffect(() => {
+    // Don't do this for ephemeral universes
+    // Can't just not register the effect because react relies on call order
+    if (typeof universeId === "undefined") return;
+
     const delta = Math.max(0, nextCheckpointTime.getTime() - (new Date()).getTime())
     const timeout = window.setTimeout(() => {
       const data = JSON.stringify(universe)
+      console.log("Saving universe at tick", universe.sim.state.tick)
       fetch(`/api/universe/${universeId}`, {
         method: "PUT",
         body: data
       })
-        .finally(() => setNextCheckpointTime(new Date(universe.sim.state.time.getTime() + CHECKPOINT_INTERVAL)))
+        .finally(() => {
+          // Originally this was counting from the latest tick date but that was having Problems
+          setNextCheckpointTime(new Date(new Date().getTime() + CHECKPOINT_INTERVAL))
+        })
     }, delta)
     return () => window.clearTimeout(timeout)
     // universe doesn't change identity so this shouldn't re-run unnecessarily
